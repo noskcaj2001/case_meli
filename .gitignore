@@ -4,8 +4,11 @@
 *.pdf
 .env
 
-# Outputs gerados (podem ser regerados rodando os notebooks)
-outputs/
+# Outputs gerados — excluir tudo exceto os CSVs usados pelo dashboard
+outputs/*
+!outputs/01_projecao_mp.csv
+!outputs/02_scores.csv
+!outputs/03_cluster_analise.csv
 
 # Arquivos internos do projeto
 CLAUDE.md
