@@ -1,0 +1,27 @@
+# Dados sensíveis e arquivos brutos
+*.xlsx
+*.csv
+*.pdf
+.env
+
+# Outputs gerados (podem ser regerados rodando os notebooks)
+outputs/
+
+# Arquivos internos do projeto
+CLAUDE.md
+claude.md
+REVISAO_CASE.md
+PROMPT_MANUS_APRESENTACAO.md
+NOTEBOOK_LM_ESTUDO.md
+_generate_notebooks.py
+old_not/
+*.png
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.ipynb_checkpoints/
+
+# macOS
+.DS_Store
