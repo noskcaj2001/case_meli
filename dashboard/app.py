@@ -110,36 +110,39 @@ def carregar_scores():
     })
 
 
+def _projecao_sintetica():
+    """Valores corretos do modelo de janela móvel 12m (notebook 01_q1_forecasting).
+    Usados quando o CSV ainda não foi gerado ou é do modelo antigo (valores < 20)."""
+    return pd.DataFrame({
+        'ds': [
+            pd.Timestamp('2026-03-31'), pd.Timestamp('2026-06-30'),
+            pd.Timestamp('2026-09-30'), pd.Timestamp('2026-12-31'),
+            pd.Timestamp('2027-03-31'), pd.Timestamp('2027-06-30'),
+        ],
+        'periodo': ['Q1/2026', 'Q2/2026', 'Q3/2026', 'Q4/2026', 'Q1/2027', 'Q2/2027'],
+        'indice_pessimista': [54.37, 69.81, 74.57, 72.01, 47.28, 30.61],
+        'indice_base':       [45.22, 54.80, 57.52, 55.54, 39.33, 28.30],
+        'indice_otimista':   [36.09, 39.79, 40.47, 39.08, 31.37, 26.00],
+    })
+
+
 @st.cache_data
 def carregar_projecao():
     path = os.path.join(OUTPUTS, '01_projecao_mp.csv')
     if os.path.exists(path):
         df = pd.read_csv(path, parse_dates=['ds'])
-        # CSV real tem indice_pessimista / indice_base / indice_otimista
-        col_base = next((c for c in df.columns if 'base' in c.lower()), None)
-        col_pess = next((c for c in df.columns if 'pess' in c.lower()), None)
-        col_otim = next((c for c in df.columns if 'otim' in c.lower()), None)
+        col_base = next((c for c in df.columns if 'base' in c.lower() and 'proc' not in c.lower()), None)
+        col_pess = next((c for c in df.columns if 'pess' in c.lower() and 'proc' not in c.lower()), None)
+        col_otim = next((c for c in df.columns if 'otim' in c.lower() and 'proc' not in c.lower()), None)
         if col_base:
             df['indice_base']       = df[col_base].clip(lower=0)
             df['indice_pessimista'] = df[col_pess].clip(lower=0) if col_pess else df['indice_base'] * 1.4
             df['indice_otimista']   = df[col_otim].clip(lower=0) if col_otim else df['indice_base'] * 0.7
-        elif 'indice' in df.columns:
-            df['indice_base']       = df['indice'].clip(lower=0)
-            df['indice_pessimista'] = (df['indice'] * 1.4).clip(lower=0)
-            df['indice_otimista']   = (df['indice'] * 0.7).clip(lower=0)
-        return df
-    # Sintético com 3 cenários
-    datas = pd.date_range('2025-09-01', '2027-06-01', freq='MS')
-    n = len(datas)
-    trend_base = np.linspace(0, -10, n)
-    noise = np.random.normal(0, 0.4, n)
-    base = INDICE_ATUAL + trend_base + noise
-    return pd.DataFrame({
-        'ds': datas,
-        'indice_base':       np.clip(base, 8, 60),
-        'indice_pessimista': np.clip(base * 1.5, 8, 80),
-        'indice_otimista':   np.clip(base * 0.65, 8, 60),
-    })
+            # Detecta CSV do modelo antigo: valores máximos irreais (< 20 = abaixo de todos os benchmarks)
+            if df['indice_base'].max() < 20:
+                return _projecao_sintetica()
+            return df
+    return _projecao_sintetica()
 
 
 @st.cache_data
@@ -437,13 +440,23 @@ e o regulador entende que a reclamação era legítima — ou seja, o MP não re
     hist_idx = [31.18, 32.50, 30.10, 29.79]
 
     # Detectar cruzamentos por cenário
+    def _ds_to_q(ts):
+        m, y = pd.Timestamp(ts).month, pd.Timestamp(ts).year
+        return f'Q{(m-1)//3+1}/{y}'
+
     def primeiro_cruzamento_q(df, col, threshold):
         for _, row in df.iterrows():
-            if row.get('periodo', '') == 'Q4/2025':
+            periodo_val = row.get('periodo')
+            # pula o ponto âncora Q4/2025
+            if pd.notna(periodo_val) and str(periodo_val) == 'Q4/2025':
                 continue
             if row[col] <= threshold:
-                periodo = row.get('periodo', row['ds'].strftime('%b/%Y'))
-                return row['ds'], row[col], periodo
+                # usa periodo se existir e for válido; senão deriva da data
+                if pd.notna(periodo_val) and str(periodo_val) not in ('', 'nan'):
+                    label = str(periodo_val)
+                else:
+                    label = _ds_to_q(row['ds'])
+                return row['ds'], row[col], label
         return None, None, '> H1/2027'
 
     cruz_picpay_base = primeiro_cruzamento_q(df_chart, col_base, 35.20)
