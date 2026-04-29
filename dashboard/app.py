@@ -272,19 +272,15 @@ st.markdown(
 )
 
 # Banner de status dinâmico
-if INDICE_ATUAL > 30:
+gap = INDICE_ATUAL - INDICE_META  # 29,79 - 20,00 = 9,79 pontos acima
+if INDICE_ATUAL > INDICE_META:
     st.markdown(
-        '<div class="status-banner status-risco">'
-        '🔴 <strong>Atenção:</strong> Índice atual de <strong>29,79</strong> está '
-        'acima da meta de 20,00. Ação imediata necessária nas 4 frentes prioritárias.'
-        '</div>',
-        unsafe_allow_html=True,
-    )
-elif INDICE_ATUAL > INDICE_META:
-    st.markdown(
-        '<div class="status-banner status-alerta">'
-        '🟡 <strong>Em progresso:</strong> Índice em queda, mas ainda acima da meta de 20,00.'
-        '</div>',
+        f'<div class="status-banner status-risco">'
+        f'🔴 <strong>Atenção:</strong> Índice atual <strong>{INDICE_ATUAL}</strong> está '
+        f'<strong>{gap:.2f} pontos acima da meta de {INDICE_META:.0f},00</strong>. '
+        f'Projeção indica alta em H1/2026 com resolução dos 4.734 casos pendentes — '
+        f'ação imediata nas 4 frentes prioritárias é necessária.'
+        f'</div>',
         unsafe_allow_html=True,
     )
 else:
